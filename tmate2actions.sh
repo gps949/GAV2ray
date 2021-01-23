@@ -100,6 +100,7 @@ MSG="
 *GitHub Actions - V2ray*
 
 🙊 *V2ray Info*
+
 V2Ray URL: \`${SAKURAFRP_URL}\`
 V2Ray Password: \`${UUID}\`
 
