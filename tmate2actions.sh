@@ -151,8 +151,6 @@ while [[ -S ${TMATE_SOCK} ]]; do
     NOW_TIME=`date +%s`
     RUNNER_TIME=`echo $START_TIME $NOW_TIME | awk '{print $2-$1}'`
     
-    echo -e "${INFO} RUNNER_TIME is  ... ${RUNNER_TIME}"
-    
     if [[ -e ${CONTINUE_FILE} ]] || ((${RUNNER_TIME} > 21500)); then
 
         echo -e "${INFO} Now stop the Frpc ..."
