@@ -2,46 +2,6 @@
 
 set -e 
 START_TIME=`date +%s`
-
-# install the zerotier
-curl -s https://install.zerotier.com | sudo bash
-
-set -e
-ZEROTIER_NODEID=`sudo zerotier-cli info | cut -d ' ' -f 3`
-ZEROTIER_LOG="/tmp/zerotier_add_member.log"
-ZEROTIER_CTRLID=${ZEROTIER_NETWORK_ID:0:10}
-
-sudo zerotier-cli join ${ZEROTIER_NETWORK_ID}
-sudo zerotier-cli set ${ZEROTIER_NETWORK_ID} allowGlobal=true
-sudo zerotier-cli set ${ZEROTIER_NETWORK_ID} allowDefault=1
-sudo zerotier-cli orbit ${ZEROTIER_MOON_ID} ${ZEROTIER_MOON_ID}
-
-set -e
-SYSCLOCK=`date +%s`
-
-if [[ -n "${ZEROTIERKEY}" ]]; then
-    echo -e "${INFO} Adding member to ZeroTier ..."
-    echo -e "${INFO} ZEROTIER_NETWORK_ID = ${ZEROTIER_NETWORK_ID}"
-    echo -e "${INFO} ZEROTIER_NODEID = ${ZEROTIER_NODEID}"
-    
-   
-    sudo curl -sSX POST "https://my.zerotier.com/api/network/${ZEROTIER_NETWORK_ID}/member/${ZEROTIER_NODEID}" \
-        -H "Authorization: bearer ${ZEROTIERKEY}" \
-        -H "Content-Type: application/json" \
-        --data '{"id": "${ZEROTIER_NETWORK_ID}${ZEROTIER_NODEID}","type": "Member","networkId": "${ZEROTIER_NETWORK_ID}","nodeId": "${ZEROTIER_NODEID}","controllerId": "${ZEROTIER_CTRLID}","hidden": false,"name": "GZVPS","description": "","online": true,"config": {"id": "${ZEROTIER_NODEID}","address": "${ZEROTIER_NODEID}","nwid": "${ZEROTIER_NETWORK_ID}","objtype": "member","authorized": true,"ipAssignments": ["10.242.9.49"]}}' >${ZEROTIER_LOG}
-    ZEROTIER_ADDMEMBER_STATUS=$(cat ${ZEROTIER_LOG} | jq -r .config.ipAssignments[0])
-    if [[ ${ZEROTIER_ADDMEMBER_STATUS} == null ]]; then
-        echo -e "${ERROR} ZeroTier add member failed: $(cat ${ZEROTIER_LOG})"
-    else
-        echo -e "${INFO} ZeroTier add member successfully!"
-        sudo sysctl -w net.ipv4.ip_forward=1
-        sudo iptables -t nat -A POSTROUTING -s 10.242.0.0/16 -o eth0 -j MASQUERADE
-        sudo iptables -t filter -A FORWARD -j ACCEPT
-    fi
-fi
-
-
-set -e
 Green_font_prefix="\033[32m"
 Red_font_prefix="\033[31m"
 Green_background_prefix="\033[42;37m"
@@ -53,6 +13,63 @@ TMATE_SOCK="/tmp/tmate.sock"
 SERVERPUSH_LOG="/tmp/wechat.log"
 CONTINUE_FILE="/tmp/continue"
 
+
+echo -e "${INFO} Download and install V2ray ..."
+# Download and install V2Ray
+mkdir /tmp/v2ray
+curl -L -H "Cache-Control: no-cache" -o /tmp/v2ray/v2ray.zip https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip
+unzip /tmp/v2ray/v2ray.zip -d /tmp/v2ray
+install -m 755 /tmp/v2ray/v2ray /usr/local/bin/v2ray
+install -m 755 /tmp/v2ray/v2ctl /usr/local/bin/v2ctl
+# Remove temporary directory
+rm -rf /tmp/v2ray
+
+
+echo -e "${INFO} Starting V2ray ..."
+# V2Ray new configuration
+install -d /usr/local/etc/v2ray
+cat << EOF > /usr/local/etc/v2ray/config.json
+{
+    "inbounds": [
+        {
+            "port": 42600,
+            "protocol": "vmess",
+            "settings": {
+                "clients": [
+                    {
+                        "id": "$UUID",
+                        "alterId": 0
+                    }
+                ]
+            },
+            "streamSettings": {
+                "network": "ws"
+            }
+        }
+    ],
+    "outbounds": [
+        {
+            "protocol": "freedom"
+        }
+    ]
+}
+EOF
+
+# Run V2Ray
+nohup /usr/local/bin/v2ray -config /usr/local/etc/v2ray/config.json > /tmp/v2ray.log 2>&1 &
+
+echo -e "${INFO} I'll rest for 5 seconds ..."
+sleep 5
+
+echo -e "${INFO} Downloading Frpc ..."
+# Download and install Frpc
+mkdir /tmp/frpc
+curl -L -H "Cache-Control: no-cache" -o /tmp/frpc/frpc https://getfrp.sh/d/frpc_linux_amd64
+install -m 755 /tmp/frpc/frpc /usr/local/bin/frpc
+
+echo -e "${INFO} Starting Frpc ..."
+#start up the frp prxoy
+nohup /usr/local/bin/frpc -f ${SAKURAFRP_ADDR} > /tmp/frpc.log 2>&1 &
 
 
 
@@ -78,7 +95,14 @@ tmate -S ${TMATE_SOCK} wait tmate-ready
 # Print connection info
 TMATE_SSH=$(tmate -S ${TMATE_SOCK} display -p '#{tmate_ssh}')
 TMATE_WEB=$(tmate -S ${TMATE_SOCK} display -p '#{tmate_web}')
+
 MSG="
+*GitHub Actions - V2ray*
+
+🙊 *V2ray Info*
+V2Ray URL: \`${SAKURAFRP_URL}\`
+V2Ray Password: \`${UUID}\`
+
 *GitHub Actions - tmate session info:*
 
 ⚡ *CLI:*
@@ -92,9 +116,9 @@ Run '\`touch ${CONTINUE_FILE}\`' to continue to the next step.
 "
 
 if [[ -n "${SERVERPUSHKEY}" ]]; then
-    echo -e "${INFO} Sending message to Wechat..."
+    echo -e "${INFO} Sending notice to Wechat..."
     curl -sSX POST "${ServerPush_API_URL:-https://sc.ftqq.com}/${SERVERPUSHKEY}.send" \
-        -d "text=GAisOK" \
+        -d "text=新的GAV2ray已就绪" \
         -d "desp=${MSG}" >${SERVERPUSH_LOG}
     SERVERPUSH_STATUS=$(cat ${SERVERPUSH_LOG} | jq -r .errno)
     if [[ ${SERVERPUSH_STATUS} != 0 ]]; then
@@ -104,7 +128,7 @@ if [[ -n "${SERVERPUSHKEY}" ]]; then
     fi
 fi
 
-while ((${PRT_COUNT:=1} <= ${PRT_TOTAL:=10})); do
+while ((${PRT_COUNT:=1} <= ${PRT_TOTAL:=3})); do
     SECONDS_LEFT=${PRT_INTERVAL_SEC:=10}
     while ((${PRT_COUNT} > 1)) && ((${SECONDS_LEFT} > 0)); do
         echo -e "${INFO} (${PRT_COUNT}/${PRT_TOTAL}) Please wait ${SECONDS_LEFT}s ..."
@@ -130,29 +154,17 @@ while [[ -S ${TMATE_SOCK} ]]; do
     echo -e "${INFO} RUNNER_TIME is  ... ${RUNNER_TIME}"
     
     if [[ -e ${CONTINUE_FILE} ]] || ((${RUNNER_TIME} > 21500)); then
-    
-        if [[ -n "${ZEROTIERKEY}" ]]; then
-            echo -e "${INFO} Now removing the GAVPS ..."
-            echo -e "${INFO} ZEROTIER_NETWORK_ID = ${ZEROTIER_NETWORK_ID}"
-            echo -e "${INFO} ZEROTIER_NODEID = ${ZEROTIER_NODEID}"
-    
-            sudo curl -sSX POST "https://my.zerotier.com/api/network/${ZEROTIER_NETWORK_ID}/member/${ZEROTIER_NODEID}" \
-                -H "Authorization: bearer ${ZEROTIERKEY}" \
-                -H "Content-Type: application/json" \
-                --data '{"id": "${ZEROTIER_NETWORK_ID}${ZEROTIER_NODEID}","type": "Member","networkId": "${ZEROTIER_NETWORK_ID}","nodeId": "${ZEROTIER_NODEID}","controllerId": "${ZEROTIER_CTRLID}","hidden": true,"name": "","description": "","online": false,"config": {"id": "${ZEROTIER_NODEID}","address": "${ZEROTIER_NODEID}","nwid": "${ZEROTIER_NETWORK_ID}","objtype": "member","authorized": false,"ipAssignments": []}}' >${ZEROTIER_LOG}
-            ZEROTIER_ADDMEMBER_STATUS=$(cat ${ZEROTIER_LOG} | jq -r .config.ipAssignments[0])
-            if [[ ${ZEROTIER_ADDMEMBER_STATUS} == null ]]; then
-                echo -e "${ERROR} ZeroTier del member failed: $(cat ${ZEROTIER_LOG})"
-            else
-                echo -e "${INFO} ZeroTier del member successfully!"
-            fi
-        fi
+
+        echo -e "${INFO} Now stop the Frpc ..."
+            
+        FRPC_PID=`sudo ps -aux|grep frp| grep -v grep | | cut -d ' ' -f 2`
+        sudo kill -9 FRPC_PID
 
         if [[ -n "${SERVERPUSHKEY}" ]]; then
             echo -e "${INFO} Sending message to Wechat..."
             curl -sSX POST "${ServerPush_API_URL:-https://sc.ftqq.com}/${SERVERPUSHKEY}.send" \
-                -d "text=前一设备已下线！" \
-                -d "desp=前一设备已下线！" >${SERVERPUSH_LOG}
+                -d "text=前一GAV2ray设备已下线！" \
+                -d "desp=前一GAV2ray设备已下线！" >${SERVERPUSH_LOG}
             SERVERPUSH_STATUS=$(cat ${SERVERPUSH_LOG} | jq -r .errno)
             if [[ ${SERVERPUSH_STATUS} != 0 ]]; then
                 echo -e "${ERROR} Wechat message sending failed: $(cat ${SERVERPUSH_LOG})"
@@ -167,35 +179,5 @@ while [[ -S ${TMATE_SOCK} ]]; do
 done
 
 
-if [[ -n "${ZEROTIERKEY}" ]]; then
-    echo -e "${INFO} Now removing the GAVPS ..."
-    echo -e "${INFO} ZEROTIER_NETWORK_ID = ${ZEROTIER_NETWORK_ID}"
-    echo -e "${INFO} ZEROTIER_NODEID = ${ZEROTIER_NODEID}"
-    
-   
-    sudo curl -sSX POST "https://my.zerotier.com/api/network/${ZEROTIER_NETWORK_ID}/member/${ZEROTIER_NODEID}" \
-        -H "Authorization: bearer ${ZEROTIERKEY}" \
-        -H "Content-Type: application/json" \
-        --data '{"id": "${ZEROTIER_NETWORK_ID}${ZEROTIER_NODEID}","type": "Member","networkId": "${ZEROTIER_NETWORK_ID}","nodeId": "${ZEROTIER_NODEID}","controllerId": "${ZEROTIER_CTRLID}","hidden": true,"name": "","description": "","online": false,"config": {"id": "${ZEROTIER_NODEID}","address": "${ZEROTIER_NODEID}","nwid": "${ZEROTIER_NETWORK_ID}","objtype": "member","authorized": false,"ipAssignments": []}}' >${ZEROTIER_LOG}
-    ZEROTIER_ADDMEMBER_STATUS=$(cat ${ZEROTIER_LOG} | jq -r .config.ipAssignments[0])
-    if [[ ${ZEROTIER_ADDMEMBER_STATUS} != null ]]; then
-        echo -e "${ERROR} ZeroTier del member failed: $(cat ${ZEROTIER_LOG})"
-    else
-        echo -e "${INFO} ZeroTier del member successfully!"
-    fi
-fi
-
-if [[ -n "${SERVERPUSHKEY}" ]]; then
-    echo -e "${INFO} Sending message to Wechat..."
-    curl -sSX POST "${ServerPush_API_URL:-https://sc.ftqq.com}/${SERVERPUSHKEY}.send" \
-        -d "text=前一设备已下线！" \
-        -d "desp=前一设备已下线！" >${SERVERPUSH_LOG}
-    SERVERPUSH_STATUS=$(cat ${SERVERPUSH_LOG} | jq -r .errno)
-    if [[ ${SERVERPUSH_STATUS} != 0 ]]; then
-        echo -e "${ERROR} Wechat message sending failed: $(cat ${SERVERPUSH_LOG})"
-    else
-        echo -e "${INFO} Wechat message sent successfully!"
-    fi
-fi
 
 # ref: https://github.com/csexton/debugger-action/blob/master/script.sh
