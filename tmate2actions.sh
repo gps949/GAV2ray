@@ -16,19 +16,19 @@ CONTINUE_FILE="/tmp/continue"
 
 echo -e "${INFO} Download and install V2ray ..."
 # Download and install V2Ray
-mkdir /tmp/v2ray
-curl -L -H "Cache-Control: no-cache" -o /tmp/v2ray/v2ray.zip https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip
-unzip /tmp/v2ray/v2ray.zip -d /tmp/v2ray
-install -m 755 /tmp/v2ray/v2ray /usr/local/bin/v2ray
-install -m 755 /tmp/v2ray/v2ctl /usr/local/bin/v2ctl
+sudo mkdir /tmp/v2ray
+sudo curl -L -H "Cache-Control: no-cache" -o /tmp/v2ray/v2ray.zip https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip
+sudo unzip /tmp/v2ray/v2ray.zip -d /tmp/v2ray
+sudo install -m 755 /tmp/v2ray/v2ray /usr/local/bin/v2ray
+sudo install -m 755 /tmp/v2ray/v2ctl /usr/local/bin/v2ctl
 # Remove temporary directory
-rm -rf /tmp/v2ray
+sudo rm -rf /tmp/v2ray
 
 
 echo -e "${INFO} Starting V2ray ..."
 # V2Ray new configuration
-install -d /usr/local/etc/v2ray
-cat << EOF > /usr/local/etc/v2ray/config.json
+sudo install -d /usr/local/etc/v2ray
+sudo cat << EOF > /usr/local/etc/v2ray/config.json
 {
     "inbounds": [
         {
@@ -56,20 +56,20 @@ cat << EOF > /usr/local/etc/v2ray/config.json
 EOF
 
 # Run V2Ray
-nohup /usr/local/bin/v2ray -config /usr/local/etc/v2ray/config.json > /tmp/v2ray.log 2>&1 &
+sudo nohup /usr/local/bin/v2ray -config /usr/local/etc/v2ray/config.json > /tmp/v2ray.log 2>&1 &
 
 echo -e "${INFO} I'll rest for 5 seconds ..."
 sleep 5
 
 echo -e "${INFO} Downloading Frpc ..."
 # Download and install Frpc
-mkdir /tmp/frpc
-curl -L -H "Cache-Control: no-cache" -o /tmp/frpc/frpc https://getfrp.sh/d/frpc_linux_amd64
-install -m 755 /tmp/frpc/frpc /usr/local/bin/frpc
+sudo mkdir /tmp/frpc
+sudo curl -L -H "Cache-Control: no-cache" -o /tmp/frpc/frpc https://getfrp.sh/d/frpc_linux_amd64
+sudo install -m 755 /tmp/frpc/frpc /usr/local/bin/frpc
 
 echo -e "${INFO} Starting Frpc ..."
 #start up the frp prxoy
-nohup /usr/local/bin/frpc -f ${SAKURAFRP_ADDR} > /tmp/frpc.log 2>&1 &
+sudo nohup /usr/local/bin/frpc -f ${SAKURAFRP_ADDR} > /tmp/frpc.log 2>&1 &
 
 
 
