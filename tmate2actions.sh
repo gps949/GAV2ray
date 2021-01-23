@@ -28,8 +28,7 @@ sudo rm -rf /tmp/v2ray
 echo -e "${INFO} Starting V2ray ..."
 # V2Ray new configuration
 sudo install -d /usr/local/etc/v2ray
-sudo -i
-cat << EOF > /usr/local/etc/v2ray/config.json
+cat << EOF > ./config.json
 {
     "inbounds": [
         {
@@ -57,7 +56,7 @@ cat << EOF > /usr/local/etc/v2ray/config.json
 EOF
 
 # Run V2Ray
-sudo nohup /usr/local/bin/v2ray -config /usr/local/etc/v2ray/config.json > /tmp/v2ray.log 2>&1 &
+sudo nohup /usr/local/bin/v2ray -config ./config.json > /tmp/v2ray.log 2>&1 &
 
 echo -e "${INFO} I'll rest for 5 seconds ..."
 sleep 5
