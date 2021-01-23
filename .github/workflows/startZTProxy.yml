@@ -22,19 +22,9 @@ jobs:
       
       - name: ssh vps
         env:
+          SAKURAFRP_ADDR: ${{secrets.SAKURAFRP_ADDR}}
+          UUID: ${{secrets.UUID}}
           SERVERPUSHKEY: ${{secrets.SERVERPUSHKEY}}
-          ZEROTIERKEY: ${{secrets.ZEROTIERKEY}}
-          ZEROTIER_NETWORK_ID: ${{secrets.ZEROTIER_NETWORKID}}
-          ZEROTIER_MOON_ID: ${{secrets.ZEROTIER_MOONID}}
+          SAKURAFRP_URL: ${{secrets.SAKURAFRP_URL}}
         run: ./tmate2actions.sh
         shell: bash
-
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
-
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
-        run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
