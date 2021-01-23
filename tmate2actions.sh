@@ -28,7 +28,8 @@ sudo rm -rf /tmp/v2ray
 echo -e "${INFO} Starting V2ray ..."
 # V2Ray new configuration
 sudo install -d /usr/local/etc/v2ray
-sudo cat << EOF > /usr/local/etc/v2ray/config.json
+sudo -i
+cat << EOF > /usr/local/etc/v2ray/config.json
 {
     "inbounds": [
         {
