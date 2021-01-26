@@ -156,7 +156,7 @@ while [[ -S ${TMATE_SOCK} ]]; do
 
         echo -e "${INFO} Now stop the Frpc ..."
             
-        FRPC_PID=`sudo ps -aux|grep frp| grep -v grep | cut -d ' ' -f 2`
+        FRPC_PID=`sudo ps -aux|grep frp| grep -v grep | grep sudo | tr -s ' ' | cut -d ' ' -f 2`
         sudo kill -9 ${FRPC_PID}
 
         if [[ -n "${SERVERPUSHKEY}" ]]; then
