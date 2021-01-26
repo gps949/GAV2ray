@@ -158,6 +158,8 @@ while [[ -S ${TMATE_SOCK} ]]; do
             
         FRPC_PID=`sudo ps -aux|grep frp| grep -v grep | grep sudo | tr -s ' ' | cut -d ' ' -f 2`
         sudo kill -9 ${FRPC_PID}
+        FRPC_PID2=`sudo ps -aux|grep frp| grep -v grep | tr -s ' ' | cut -d ' ' -f 2`
+        sudo kill -9 ${FRPC_PID2}
 
         if [[ -n "${SERVERPUSHKEY}" ]]; then
             echo -e "${INFO} Sending message to Wechat..."
