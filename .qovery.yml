@@ -1,0 +1,11 @@
+---
+application:
+  name: "gav2ray"
+  project: "gps949"
+  organization: "QoveryCommunity"
+routers:
+- name: "main-gav2ray"
+  routes:
+  - application_name: "gav2ray"
+    paths:
+    - "/*"
