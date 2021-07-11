@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+
 set -e 
 START_TIME=`date +%s`
 Green_font_prefix="\033[32m"
